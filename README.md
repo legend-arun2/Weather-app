@@ -45,3 +45,4 @@ Vercel's environment variables instead. `.env.example` lists the non-secret sett
 
 Places you type, and approximate coordinates (rounded to about 1 km) if you tap **Use my location**, are sent to
 [Open-Meteo](https://open-meteo.com/). Nothing else leaves the browser, and only your unit choice is stored locally.
+Fonts (Inter and Space Grotesk) are bundled with the app via `@fontsource`, so no third-party font requests are made.

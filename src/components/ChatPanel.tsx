@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Units } from '../types';
 import { MAX_INPUT } from '../lib/intent';
+import Icon from './Icon';
 
 /** Messages hold data and render functions, never pre-rendered units, so toggling °C/°F updates old cards. */
 export interface ChatMessage {
@@ -53,12 +54,12 @@ export default function ChatPanel({ messages, units, busy, onSend, onLocate }: P
         {SUGGESTIONS.map((s) => (
           <button key={s} type="button" disabled={busy} onClick={() => onSend(s)}>{s}</button>
         ))}
-        <button type="button" disabled={busy} onClick={onLocate}>📍 Use my location</button>
+        <button type="button" disabled={busy} onClick={onLocate}><Icon name="pin" size={16} />Use my location</button>
       </div>
       <form className="composer" onSubmit={submit}>
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask about the weather…"
           aria-label="Message" maxLength={MAX_INPUT} />
-        <button type="submit" disabled={busy || !text.trim()}>Send</button>
+        <button type="submit" className="send" aria-label="Send" disabled={busy || !text.trim()}><Icon name="send" size={22} strokeWidth={2.2} /></button>
       </form>
     </div>
   );

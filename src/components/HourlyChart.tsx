@@ -1,44 +1,37 @@
 import type { HourPoint, Units } from '../types';
 import { tempUnit, toTemp } from '../lib/units';
-import { describeCode } from '../lib/weatherCodes';
+import { chartSummary, sampleHours } from '../lib/chart';
+
+const MIN_BAR = 20; // px
+const BAR_RANGE = 64; // px
 
 export default function HourlyChart({ hours, units, title }: { hours: HourPoint[]; units: Units; title?: string }) {
   if (hours.length === 0) return null;
-  const W = 600, H = 170, PX = 28, PT = 28, PB = 34;
-  const temps = hours.map((h) => toTemp(h.temp, units));
-  const min = Math.min(...temps), max = Math.max(...temps);
-  const span = Math.max(max - min, 1);
-  const x = (i: number) => PX + (i * (W - 2 * PX)) / Math.max(hours.length - 1, 1);
-  const y = (t: number) => PT + (1 - (t - min) / span) * (H - PT - PB);
-  const line = temps.map((t, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(t).toFixed(1)}`).join(' ');
-  const barW = Math.max((W - 2 * PX) / hours.length - 3, 4);
-  const step = hours.length > 12 ? 3 : 1;
+  const cols = sampleHours(hours, 12);
+  const temps = cols.map((h) => toTemp(h.temp, units));
+  const min = Math.min(...temps);
+  const span = Math.max(Math.max(...temps) - min, 1);
 
   return (
-    <div className="card chart-card">
-      <div className="chart-title">{title ?? `Next ${hours.length} hours`} · temperature ({tempUnit(units)}) and rain chance</div>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Hourly temperature and rain chance chart">
-        {hours.map((h, i) => (
-          <rect key={`r${i}`} x={x(i) - barW / 2} y={H - PB - (h.rainChance / 100) * 40} width={barW}
-            height={(h.rainChance / 100) * 40} className="rain-bar">
-            <title>{`${h.time.slice(11, 16)} · rain ${h.rainChance}%`}</title>
-          </rect>
+    <section className="card chart-card" aria-label="Hourly forecast">
+      <div className="chart-head">
+        <div className="chart-title">{title ?? `Next ${hours.length} hours`}</div>
+        <div className="legend">
+          <span><i className="swatch temp" />Temperature {tempUnit(units)}</span>
+          <span><i className="swatch rain" />Rain chance</span>
+        </div>
+      </div>
+      <div className="hour-grid" role="img" aria-label={chartSummary(hours, units)}>
+        {cols.map((h, i) => (
+          <div key={h.time} className={`hour-col${i === 0 ? ' first' : ''}`}>
+            <div className="hour-temp">{temps[i]}°</div>
+            <div className="hour-bar" style={{ height: MIN_BAR + Math.round(((temps[i] - min) / span) * BAR_RANGE) }} />
+            <div className="rain-track"><div className="rain-fill" style={{ width: `${h.rainChance}%` }} /></div>
+            <div className="hour-rain">{h.rainChance}%</div>
+            <div className="hour-label">{h.time.slice(11, 13)}h</div>
+          </div>
         ))}
-        <path d={line} className="temp-line" fill="none" />
-        {hours.map((h, i) => (
-          <g key={`t${i}`}>
-            <circle cx={x(i)} cy={y(temps[i])} r={3} className="temp-dot">
-              <title>{`${h.time.slice(11, 16)} · ${temps[i]}${tempUnit(units)} · ${describeCode(h.code).label}`}</title>
-            </circle>
-            {i % step === 0 && (
-              <>
-                <text x={x(i)} y={y(temps[i]) - 9} className="temp-label" textAnchor="middle">{temps[i]}°</text>
-                <text x={x(i)} y={H - 12} className="hour-label" textAnchor="middle">{h.time.slice(11, 13)}h</text>
-              </>
-            )}
-          </g>
-        ))}
-      </svg>
-    </div>
+      </div>
+    </section>
   );
 }
