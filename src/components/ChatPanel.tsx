@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import type { Units } from '../types';
+import { MAX_INPUT } from '../lib/intent';
 
+/** Messages hold data and render functions, never pre-rendered units, so toggling °C/°F updates old cards. */
 export interface ChatMessage {
   id: number;
   role: 'user' | 'bot';
-  text: string;
-  extra?: ReactNode;
+  text: string | ((units: Units) => string);
+  body?: (units: Units) => ReactNode;
 }
 
 interface Props {
   messages: ChatMessage[];
+  units: Units;
   busy: boolean;
   onSend: (text: string) => void;
   onLocate: () => void;
@@ -17,13 +21,13 @@ interface Props {
 
 const SUGGESTIONS = ["What's the weather in London?", 'What should I wear today in Oslo?', 'Next 24 hours in Tokyo'];
 
-export default function ChatPanel({ messages, busy, onSend, onLocate }: Props) {
+export default function ChatPanel({ messages, units, busy, onSend, onLocate }: Props) {
   const [text, setText] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
-  }, [messages, busy]);
+  }, [messages.length, busy]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +42,8 @@ export default function ChatPanel({ messages, busy, onSend, onLocate }: Props) {
       <div className="messages" aria-live="polite">
         {messages.map((m) => (
           <div key={m.id} className={`msg ${m.role}`}>
-            <div className="bubble">{m.text}</div>
-            {m.extra}
+            <div className="bubble">{typeof m.text === 'function' ? m.text(units) : m.text}</div>
+            {m.body?.(units)}
           </div>
         ))}
         {busy && <div className="msg bot"><div className="bubble typing">Checking the sky…</div></div>}
@@ -53,7 +57,7 @@ export default function ChatPanel({ messages, busy, onSend, onLocate }: Props) {
       </div>
       <form className="composer" onSubmit={submit}>
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask about the weather…"
-          aria-label="Message" autoFocus />
+          aria-label="Message" maxLength={MAX_INPUT} />
         <button type="submit" disabled={busy || !text.trim()}>Send</button>
       </form>
     </div>
