@@ -90,7 +90,13 @@ export function mapForecast(place: Place, d: any): Forecast {
   const nowHour = current.time.slice(0, 13);
   let start = all.findIndex((p) => p.time.slice(0, 13) >= nowHour);
   if (start < 0) start = 0;
-  return { place, current, hours: all.slice(start, start + 24), allHours: all };
+  return {
+    place,
+    current,
+    hours: all.slice(start, start + 24),
+    allHours: all,
+    tzAbbr: typeof d.timezone_abbreviation === 'string' ? d.timezone_abbreviation : undefined,
+  };
 }
 
 // Hours for "today/now" (next 24h) or "tomorrow" (tomorrow's calendar day; [] if not in the data).

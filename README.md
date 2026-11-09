@@ -10,6 +10,9 @@ A chat-style weather web app. Ask in plain English:
 You get current conditions, a 24-hour temperature and rain chart, and rule-based clothing advice
 (based on feels-like temperature, rain chance, wind and UV). °C/°F toggle included.
 
+The whole screen is painted as the current sky: clear, overcast, rain, snow or fog, by day or night. The sky follows
+the forecast you ask for (and your clock before you ask). Palettes live in `src/styles.css` under `[data-sky]`.
+
 Weather data comes from [Open-Meteo](https://open-meteo.com/), which needs **no API key**, so nothing secret ships to the browser.
 
 ## Develop
@@ -45,4 +48,4 @@ Vercel's environment variables instead. `.env.example` lists the non-secret sett
 
 Places you type, and approximate coordinates (rounded to about 1 km) if you tap **Use my location**, are sent to
 [Open-Meteo](https://open-meteo.com/). Nothing else leaves the browser, and only your unit choice is stored locally.
-Fonts (Inter and Space Grotesk) are bundled with the app via `@fontsource`, so no third-party font requests are made.
+Fonts (Big Shoulders Display, Instrument Sans and IBM Plex Mono) are bundled with the app via `@fontsource`, so no third-party font requests are made.

@@ -1,15 +1,18 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import ChatPanel from './components/ChatPanel';
 import type { ChatMessage } from './components/ChatPanel';
-import WeatherCard from './components/WeatherCard';
-import HourlyChart from './components/HourlyChart';
+import Stage from './components/Stage';
+import type { StageData } from './components/Stage';
+import SkyBackdrop from './components/SkyBackdrop';
 import OutfitCard from './components/OutfitCard';
+import Icon from './components/Icon';
 import { fetchForecast, geocode, hoursFor } from './lib/openMeteo';
 import { parseIntent } from './lib/intent';
 import { recommendOutfit } from './lib/outfit';
+import { skyFor, skyForHour, skyIcon } from './lib/sky';
 import { summarize } from './lib/summary';
 import { describeCode } from './lib/weatherCodes';
-import Icon from './components/Icon';
+import { rainNote } from './lib/stageText';
 import { tempUnit, toTemp } from './lib/units';
 import type { Place, Units } from './types';
 
@@ -30,9 +33,18 @@ export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: 0, role: 'bot', text: 'Hello! Which place do you want the weather for? ' + HELP_TEXT },
   ]);
+  const [stage, setStage] = useState<StageData | null>(null);
+  const [startHour] = useState(() => new Date().getHours());
   const [busy, setBusy] = useState(false);
   const nextId = useRef(1);
   const lastPlace = useRef<Place | null>(null);
+
+  // The whole screen is painted as the current weather; before any forecast it follows the clock.
+  const sky = useMemo(() => {
+    if (!stage) return skyForHour(startHour);
+    const s = summarize(stage.hours);
+    return stage.tomorrow && s ? skyFor(s.code, true) : skyFor(stage.forecast.current.code, stage.forecast.current.isDay);
+  }, [stage, startHour]);
 
   const push = useCallback((m: Omit<ChatMessage, 'id'>) => {
     setMessages((prev) => [...prev, { ...m, id: nextId.current++ }]);
@@ -71,40 +83,33 @@ export default function App() {
     if (tomorrow && hours.length === 0) return say(`I don't have tomorrow's forecast for ${place.name} yet.`);
     if (intent.hours && !tomorrow) hours = hours.slice(0, intent.hours);
     const day = tomorrow ? 'tomorrow' : 'today';
-    const range = intent.hours && !tomorrow ? `next ${hours.length} hours` : tomorrow ? 'tomorrow' : 'next 24 hours';
     const chartTitle = tomorrow ? 'Tomorrow' : `Next ${hours.length} hours`;
     const name = place.name;
+    setStage({ forecast, hours, tomorrow, chartTitle });
+    // When the layout is stacked (phones), bring the new weather back into view; outfit advice is in the chat below it.
+    if (kind !== 'outfit' && window.matchMedia('(max-width: 900px)').matches) {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+    }
 
     if (kind === 'outfit') {
       push({
         role: 'bot',
-        text: `Here's what to wear in ${name} ${day}:`,
-        body: (u) => (
-          <>
-            {!tomorrow && <WeatherCard forecast={forecast} units={u} />}
-            <OutfitCard advice={recommendOutfit(hours, u)} />
-          </>
-        ),
+        text: (u) => `${recommendOutfit(hours, u).summary} Here's what to wear in ${name} ${day}:`,
+        body: (u) => <OutfitCard advice={recommendOutfit(hours, u)} />,
       });
     } else if (kind === 'hourly') {
-      push({ role: 'bot', text: `Hourly forecast for ${name} (${range}):`, body: (u) => <HourlyChart hours={hours} units={u} title={chartTitle} /> });
+      push({ role: 'bot', text: `Hourly forecast for ${name} (${chartTitle.toLowerCase()}) is on the left.` });
     } else {
       const s = summarize(hours)!;
       push({
         role: 'bot',
         text: (u) => {
           const label = describeCode(tomorrow ? s.code : forecast.current.code, forecast.current.isDay).label;
-          const rain = `Rain chance up to ${s.maxRain}%.`;
           return tomorrow
-            ? `Tomorrow in ${name}: ${label}, ${toTemp(s.min, u)}–${toTemp(s.max, u)}${tempUnit(u)}. ${rain}`
-            : `${label}, ${toTemp(forecast.current.temp, u)}${tempUnit(u)} in ${name} right now. ${rain}`;
+            ? `Tomorrow in ${name}: ${label}, ${toTemp(s.min, u)}–${toTemp(s.max, u)}${tempUnit(u)}. ${rainNote(hours)}`
+            : `${label}, ${toTemp(forecast.current.temp, u)}${tempUnit(u)} in ${name} right now. ${rainNote(hours)}`;
         },
-        body: (u) => (
-          <>
-            {!tomorrow && <WeatherCard forecast={forecast} units={u} />}
-            <HourlyChart hours={hours} units={u} title={chartTitle} />
-          </>
-        ),
       });
     }
   }, [push, say]);
@@ -135,7 +140,7 @@ export default function App() {
     setBusy(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const place: Place = { name: 'your location', latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        const place: Place = { name: 'Your location', latitude: pos.coords.latitude, longitude: pos.coords.longitude };
         void run(() => answer('weather', place));
       },
       () => {
@@ -147,25 +152,28 @@ export default function App() {
   };
 
   return (
-    <div className="app">
-      <header>
-        <div className="brand">
-          <span className="logo"><Icon name="cloud" size={22} /></span>
-          <h1>Weather Chat</h1>
-        </div>
-        <div className="unit-toggle" role="group" aria-label="Temperature units">
-          <button type="button" className="unit-btn" aria-pressed={units === 'metric'} onClick={() => setUnitsPref('metric')}>°C</button>
-          <button type="button" className="unit-btn" aria-pressed={units === 'imperial'} onClick={() => setUnitsPref('imperial')}>°F</button>
-        </div>
-      </header>
-      <ChatPanel messages={messages} units={units} busy={busy} onSend={onSend} onLocate={onLocate} />
-      <footer>
-        <div>Data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a></div>
-        <div className="privacy">
-          Places you type, and approximate coordinates if you use your location, are sent to Open-Meteo.
-          Only your unit choice is saved on this device.
-        </div>
-      </footer>
+    <div className="sky" data-sky={sky}>
+      <SkyBackdrop />
+      <div className="shell">
+        <header>
+          <div className="brand">
+            <span className="logo"><Icon name={skyIcon(sky)} size={30} strokeWidth={1.8} /></span>
+            <h1>Weather Chat</h1>
+          </div>
+          <div className="unit-toggle" role="group" aria-label="Temperature units">
+            <button type="button" className="unit-btn" aria-pressed={units === 'metric'} onClick={() => setUnitsPref('metric')}>°C</button>
+            <button type="button" className="unit-btn" aria-pressed={units === 'imperial'} onClick={() => setUnitsPref('imperial')}>°F</button>
+          </div>
+        </header>
+        <main className="layout">
+          <Stage data={stage} units={units} />
+          <ChatPanel messages={messages} units={units} busy={busy} onSend={onSend} onLocate={onLocate} />
+        </main>
+        <footer>
+          <span>Data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a></span>
+          <span>Places you type, and approximate coordinates if you use your location, are sent to Open-Meteo. Only your unit choice is saved on this device.</span>
+        </footer>
+      </div>
     </div>
   );
 }
