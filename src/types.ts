@@ -41,6 +41,10 @@ export interface Intent {
   kind: IntentKind;
   place?: string;
   tomorrow?: boolean;
+  /** Number of hours asked for ("next 3 hours"), 1-24. */
+  hours?: number;
+  /** Set when the user asked for a range we don't support (e.g. "next week"). */
+  unsupported?: string;
 }
 
 export interface OutfitAdvice {

@@ -30,3 +30,21 @@ describe('recommendOutfit', () => {
     expect(labels([hour({ feelsLike: 8 }), hour({ feelsLike: 22 })])).toMatch(/removable layer/i);
   });
 });
+
+describe('recommendOutfit: units, hours and icy codes', () => {
+  it('formats reasons in imperial units', () => {
+    const advice = recommendOutfit([hour({ feelsLike: 5, wind: 40 }), hour({ feelsLike: 5, wind: 40 }), hour({ feelsLike: 5, wind: 40 })], 'imperial');
+    const text = advice.items.map((i) => i.reason).join(' ');
+    expect(text).toContain('41\u00b0F');
+    expect(text).toContain('25 mph');
+    expect(text).not.toContain('km/h');
+  });
+  it('ignores overnight hours when judging the day', () => {
+    const day = Array.from({ length: 24 }, (_, h) =>
+      hour({ time: `2026-11-09T${String(h).padStart(2, '0')}:00`, feelsLike: h >= 7 && h <= 22 ? 20 : 2 }));
+    expect(labels(day)).toMatch(/T-shirt/i);
+  });
+  it('treats freezing rain like snow', () => {
+    expect(labels([hour({ code: 67, feelsLike: 1 }), hour({ code: 67, feelsLike: 1 }), hour({ code: 67, feelsLike: 1 })])).toMatch(/grip/i);
+  });
+});

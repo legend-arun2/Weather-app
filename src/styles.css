@@ -47,3 +47,4 @@ svg { width: 100%; height: auto; display: block; }
 .composer button { padding: 0 18px; border: 0; border-radius: var(--radius); background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
 footer { text-align: center; font-size: .75rem; color: var(--muted); padding: 4px 0 10px; }
 footer a { color: inherit; }
+.privacy { margin-top: 2px; font-size: .7rem; }

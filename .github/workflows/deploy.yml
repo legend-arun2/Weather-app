@@ -1,18 +1,20 @@
-name: Deploy to GitHub Pages
+name: CI and deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
+# Least privilege by default; only the deploy job gets Pages/OIDC write access.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# Never cancel a deployment that is already running.
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: pages-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -28,13 +30,20 @@ jobs:
       - run: npm run build
         env:
           VITE_BASE_PATH: /Weather-app/
+      # Production dependencies only: dev-tooling advisories don't ship to visitors.
+      - run: npm audit --omit=dev --audit-level=high
       - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
         with:
           path: dist
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -2,7 +2,7 @@ import type { HourPoint, Units } from '../types';
 import { tempUnit, toTemp } from '../lib/units';
 import { describeCode } from '../lib/weatherCodes';
 
-export default function HourlyChart({ hours, units }: { hours: HourPoint[]; units: Units }) {
+export default function HourlyChart({ hours, units, title }: { hours: HourPoint[]; units: Units; title?: string }) {
   if (hours.length === 0) return null;
   const W = 600, H = 170, PX = 28, PT = 28, PB = 34;
   const temps = hours.map((h) => toTemp(h.temp, units));
@@ -16,7 +16,7 @@ export default function HourlyChart({ hours, units }: { hours: HourPoint[]; unit
 
   return (
     <div className="card chart-card">
-      <div className="chart-title">Next {hours.length} hours · temperature ({tempUnit(units)}) and rain chance</div>
+      <div className="chart-title">{title ?? `Next ${hours.length} hours`} · temperature ({tempUnit(units)}) and rain chance</div>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Hourly temperature and rain chance chart">
         {hours.map((h, i) => (
           <rect key={`r${i}`} x={x(i) - barW / 2} y={H - PB - (h.rainChance / 100) * 40} width={barW}

@@ -7,12 +7,13 @@ import OutfitCard from './components/OutfitCard';
 import { fetchForecast, geocode, hoursFor } from './lib/openMeteo';
 import { parseIntent } from './lib/intent';
 import { recommendOutfit } from './lib/outfit';
+import { summarize } from './lib/summary';
 import { describeCode } from './lib/weatherCodes';
 import { tempUnit, toTemp } from './lib/units';
-import type { Forecast, Place, Units } from './types';
+import type { Place, Units } from './types';
 
 const HELP_TEXT =
-  'Hi! Ask me things like "weather in Paris", "next 24 hours in Tokyo" or "what should I wear today in Oslo?". ' +
+  'Ask me things like "weather in Paris", "next 24 hours in Tokyo" or "what should I wear today in Oslo?". ' +
   'You can also tap "Use my location".';
 
 function loadUnits(): Units {
@@ -35,6 +36,7 @@ export default function App() {
   const push = useCallback((m: Omit<ChatMessage, 'id'>) => {
     setMessages((prev) => [...prev, { ...m, id: nextId.current++ }]);
   }, []);
+  const say = useCallback((text: string) => push({ role: 'bot', text }), [push]);
 
   const toggleUnits = () => {
     const next: Units = units === 'metric' ? 'imperial' : 'metric';
@@ -44,58 +46,83 @@ export default function App() {
 
   const answer = useCallback(async (text: string, preset?: Place) => {
     const intent = parseIntent(text);
-    if (intent.kind === 'help' && !preset) {
-      push({ role: 'bot', text: HELP_TEXT });
-      return;
+    if (intent.kind === 'help' && !preset) return say(HELP_TEXT);
+    if (intent.unsupported && !preset) {
+      return say(`I can only do today and tomorrow, not "${intent.unsupported}". Try "weather in Paris tomorrow".`);
     }
+
     let place: Place | null | undefined = preset;
     if (!place) {
       if (intent.place) {
         place = await geocode(intent.place);
-        if (!place) {
-          push({ role: 'bot', text: `I couldn't find a place called "${intent.place}". Try a nearby big city or check the spelling.` });
-          return;
-        }
+        if (!place) return say(`I couldn't find a place called "${intent.place}". Try a nearby big city or check the spelling.`);
       } else if (lastPlace.current) {
         place = lastPlace.current;
       } else {
-        push({ role: 'bot', text: 'Which city? Tell me a place (e.g. "in Paris") or tap "Use my location".' });
-        return;
+        return say('Which city? Tell me a place (e.g. "in Paris") or tap "Use my location".');
       }
     }
-    lastPlace.current = place;
-    const forecast: Forecast = await fetchForecast(place);
+    const forecast = await fetchForecast(place);
+    lastPlace.current = place; // only remember a place once its forecast has loaded
+
     const kind = intent.kind === 'help' ? 'weather' : intent.kind;
-    const hours = hoursFor(forecast, intent.tomorrow);
-    const day = intent.tomorrow ? 'tomorrow' : 'today';
-    const c = forecast.current;
-    const summary = `${describeCode(c.code).label}, ${toTemp(c.temp, units)}${tempUnit(units)} in ${place.name} right now.`;
+    const tomorrow = !!intent.tomorrow;
+    let hours = hoursFor(forecast, tomorrow);
+    if (tomorrow && hours.length === 0) return say(`I don't have tomorrow's forecast for ${place.name} yet.`);
+    if (intent.hours && !tomorrow) hours = hours.slice(0, intent.hours);
+    const day = tomorrow ? 'tomorrow' : 'today';
+    const range = intent.hours && !tomorrow ? `next ${hours.length} hours` : tomorrow ? 'tomorrow' : 'next 24 hours';
+    const chartTitle = tomorrow ? 'Tomorrow' : `Next ${hours.length} hours`;
+    const name = place.name;
 
     if (kind === 'outfit') {
-      const advice = recommendOutfit(hours);
-      push({ role: 'bot', text: `Here's what to wear in ${place.name} ${day}:`,
-        extra: <><WeatherCard forecast={forecast} units={units} /><OutfitCard advice={advice} /></> });
+      push({
+        role: 'bot',
+        text: `Here's what to wear in ${name} ${day}:`,
+        body: (u) => (
+          <>
+            {!tomorrow && <WeatherCard forecast={forecast} units={u} />}
+            <OutfitCard advice={recommendOutfit(hours, u)} />
+          </>
+        ),
+      });
     } else if (kind === 'hourly') {
-      push({ role: 'bot', text: `Hourly forecast for ${place.name} (${intent.tomorrow ? 'tomorrow' : 'next 24 hours'}):`,
-        extra: <HourlyChart hours={hours} units={units} /> });
+      push({ role: 'bot', text: `Hourly forecast for ${name} (${range}):`, body: (u) => <HourlyChart hours={hours} units={u} title={chartTitle} /> });
     } else {
-      push({ role: 'bot', text: summary,
-        extra: <><WeatherCard forecast={forecast} units={units} /><HourlyChart hours={forecast.hours} units={units} /></> });
+      const s = summarize(hours)!;
+      push({
+        role: 'bot',
+        text: (u) => {
+          const label = describeCode(tomorrow ? s.code : forecast.current.code).label;
+          const rain = `Rain chance up to ${s.maxRain}%.`;
+          return tomorrow
+            ? `Tomorrow in ${name}: ${label}, ${toTemp(s.min, u)}–${toTemp(s.max, u)}${tempUnit(u)}. ${rain}`
+            : `${label}, ${toTemp(forecast.current.temp, u)}${tempUnit(u)} in ${name} right now. ${rain}`;
+        },
+        body: (u) => (
+          <>
+            {!tomorrow && <WeatherCard forecast={forecast} units={u} />}
+            <HourlyChart hours={hours} units={u} title={chartTitle} />
+          </>
+        ),
+      });
     }
-  }, [push, units]);
+  }, [push, say]);
 
   const run = useCallback(async (fn: () => Promise<void>) => {
     setBusy(true);
     try {
       await fn();
     } catch (e) {
+      console.error(e);
       const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-      push({ role: 'bot', text: offline ? "You seem to be offline. Check your connection and try again."
-        : `Sorry, something went wrong: ${e instanceof Error ? e.message : 'unknown error'}` });
+      if (offline) say('You seem to be offline. Check your connection and try again.');
+      else if (e instanceof TypeError) say('Could not reach the weather service. Check your connection and try again.');
+      else say(`Sorry, something went wrong: ${e instanceof Error ? e.message : 'unknown error'}`);
     } finally {
       setBusy(false);
     }
-  }, [push]);
+  }, [say]);
 
   const onSend = (text: string) => {
     push({ role: 'user', text });
@@ -103,20 +130,17 @@ export default function App() {
   };
 
   const onLocate = () => {
-    if (!navigator.geolocation) {
-      push({ role: 'bot', text: "Your browser doesn't support location. Type a city instead." });
-      return;
-    }
+    if (!navigator.geolocation) return say("Your browser doesn't support location. Type a city instead.");
     push({ role: 'user', text: '📍 Use my location' });
     setBusy(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const place: Place = { name: 'Your location', latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        const place: Place = { name: 'your location', latitude: pos.coords.latitude, longitude: pos.coords.longitude };
         void run(() => answer('weather', place));
       },
       () => {
         setBusy(false);
-        push({ role: 'bot', text: "I couldn't get your location. Allow location access or type a city instead." });
+        say("I couldn't get your location. Allow location access or type a city instead.");
       },
       { timeout: 10000 },
     );
@@ -126,12 +150,19 @@ export default function App() {
     <div className="app">
       <header>
         <h1>🌤️ Weather Chat</h1>
-        <button type="button" className="unit-toggle" onClick={toggleUnits} aria-label="Toggle units">
+        <button type="button" className="unit-toggle" onClick={toggleUnits}
+          aria-label={`Units: ${units === 'metric' ? 'Celsius' : 'Fahrenheit'}. Switch to ${units === 'metric' ? 'Fahrenheit' : 'Celsius'}`}>
           {units === 'metric' ? '°C' : '°F'}
         </button>
       </header>
-      <ChatPanel messages={messages} busy={busy} onSend={onSend} onLocate={onLocate} />
-      <footer>Data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a></footer>
+      <ChatPanel messages={messages} units={units} busy={busy} onSend={onSend} onLocate={onLocate} />
+      <footer>
+        <div>Data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a></div>
+        <div className="privacy">
+          Places you type, and approximate coordinates if you use your location, are sent to Open-Meteo.
+          Only your unit choice is saved on this device.
+        </div>
+      </footer>
     </div>
   );
 }
