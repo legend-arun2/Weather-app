@@ -9,6 +9,7 @@ import { parseIntent } from './lib/intent';
 import { recommendOutfit } from './lib/outfit';
 import { summarize } from './lib/summary';
 import { describeCode } from './lib/weatherCodes';
+import Icon from './components/Icon';
 import { tempUnit, toTemp } from './lib/units';
 import type { Place, Units } from './types';
 
@@ -38,8 +39,7 @@ export default function App() {
   }, []);
   const say = useCallback((text: string) => push({ role: 'bot', text }), [push]);
 
-  const toggleUnits = () => {
-    const next: Units = units === 'metric' ? 'imperial' : 'metric';
+  const setUnitsPref = (next: Units) => {
     setUnits(next);
     try { localStorage.setItem('units', next); } catch { /* storage unavailable */ }
   };
@@ -93,7 +93,7 @@ export default function App() {
       push({
         role: 'bot',
         text: (u) => {
-          const label = describeCode(tomorrow ? s.code : forecast.current.code).label;
+          const label = describeCode(tomorrow ? s.code : forecast.current.code, forecast.current.isDay).label;
           const rain = `Rain chance up to ${s.maxRain}%.`;
           return tomorrow
             ? `Tomorrow in ${name}: ${label}, ${toTemp(s.min, u)}–${toTemp(s.max, u)}${tempUnit(u)}. ${rain}`
@@ -131,7 +131,7 @@ export default function App() {
 
   const onLocate = () => {
     if (!navigator.geolocation) return say("Your browser doesn't support location. Type a city instead.");
-    push({ role: 'user', text: '📍 Use my location' });
+    push({ role: 'user', text: 'Use my location' });
     setBusy(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -149,11 +149,14 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <h1>🌤️ Weather Chat</h1>
-        <button type="button" className="unit-toggle" onClick={toggleUnits}
-          aria-label={`Units: ${units === 'metric' ? 'Celsius' : 'Fahrenheit'}. Switch to ${units === 'metric' ? 'Fahrenheit' : 'Celsius'}`}>
-          {units === 'metric' ? '°C' : '°F'}
-        </button>
+        <div className="brand">
+          <span className="logo"><Icon name="cloud" size={22} /></span>
+          <h1>Weather Chat</h1>
+        </div>
+        <div className="unit-toggle" role="group" aria-label="Temperature units">
+          <button type="button" className="unit-btn" aria-pressed={units === 'metric'} onClick={() => setUnitsPref('metric')}>°C</button>
+          <button type="button" className="unit-btn" aria-pressed={units === 'imperial'} onClick={() => setUnitsPref('imperial')}>°F</button>
+        </div>
       </header>
       <ChatPanel messages={messages} units={units} busy={busy} onSend={onSend} onLocate={onLocate} />
       <footer>

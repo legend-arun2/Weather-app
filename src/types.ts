@@ -47,7 +47,11 @@ export interface Intent {
   unsupported?: string;
 }
 
+export type IconName =
+  | 'sun' | 'moon' | 'partly' | 'partly-night' | 'cloud' | 'fog' | 'drizzle' | 'rain' | 'snow' | 'storm'
+  | 'drop' | 'wind' | 'umbrella' | 'layers' | 'swap' | 'boots' | 'thermo' | 'pin' | 'send';
+
 export interface OutfitAdvice {
   summary: string;
-  items: { label: string; reason: string }[];
+  items: { label: string; reason: string; icon: IconName }[];
 }

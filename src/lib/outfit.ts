@@ -32,44 +32,44 @@ export function recommendOutfit(allHours: HourPoint[], units: Units = 'metric'):
 
   if (avgFeel < 0) {
     summary = 'Freezing out there. Bundle up.';
-    items.push({ label: 'Heavy winter coat', reason: `It feels like ${t(minFeel)} at the coldest.` });
-    items.push({ label: 'Thermal base layer + sweater', reason: 'Layers trap heat in freezing weather.' });
-    items.push({ label: 'Hat, scarf and gloves', reason: 'Protect extremities from the cold.' });
+    items.push({ label: 'Heavy winter coat', reason: `It feels like ${t(minFeel)} at the coldest.`, icon: 'layers' });
+    items.push({ label: 'Thermal base layer + sweater', reason: 'Layers trap heat in freezing weather.', icon: 'thermo' });
+    items.push({ label: 'Hat, scarf and gloves', reason: 'Protect extremities from the cold.', icon: 'snow' });
   } else if (avgFeel < 10) {
     summary = 'Cold. Wear a warm jacket.';
-    items.push({ label: 'Warm jacket or coat', reason: `Feels like ${t(avgFeel)} on average.` });
-    items.push({ label: 'Sweater or fleece', reason: 'An insulating mid layer helps.' });
-    items.push({ label: 'Long trousers', reason: 'Keep your legs warm.' });
+    items.push({ label: 'Warm jacket or coat', reason: `Feels like ${t(avgFeel)} on average.`, icon: 'layers' });
+    items.push({ label: 'Sweater or fleece', reason: 'An insulating mid layer helps.', icon: 'thermo' });
+    items.push({ label: 'Long trousers', reason: 'Keep your legs warm.', icon: 'boots' });
   } else if (avgFeel < 18) {
     summary = 'Cool. A light jacket does the job.';
-    items.push({ label: 'Light jacket or hoodie', reason: `Feels like ${t(avgFeel)} on average.` });
-    items.push({ label: 'Long sleeves + long trousers', reason: 'Comfortable for mild, cool weather.' });
+    items.push({ label: 'Light jacket or hoodie', reason: `Feels like ${t(avgFeel)} on average.`, icon: 'layers' });
+    items.push({ label: 'Long sleeves + long trousers', reason: 'Comfortable for mild, cool weather.', icon: 'thermo' });
   } else if (avgFeel < 25) {
     summary = 'Pleasant. Light clothes work well.';
-    items.push({ label: 'T-shirt or light shirt', reason: `Feels like ${t(avgFeel)} on average.` });
-    items.push({ label: 'Light trousers or jeans', reason: 'Comfortable without overheating.' });
+    items.push({ label: 'T-shirt or light shirt', reason: `Feels like ${t(avgFeel)} on average.`, icon: 'sun' });
+    items.push({ label: 'Light trousers or jeans', reason: 'Comfortable without overheating.', icon: 'thermo' });
   } else {
     summary = 'Hot. Dress light and stay cool.';
-    items.push({ label: 'Breathable T-shirt and shorts', reason: `Feels like ${t(avgFeel)} on average.` });
-    items.push({ label: 'Light-coloured, loose clothing', reason: 'Reflects heat and lets air through.' });
-    items.push({ label: 'Water bottle', reason: 'Stay hydrated in the heat.' });
+    items.push({ label: 'Breathable T-shirt and shorts', reason: `Feels like ${t(avgFeel)} on average.`, icon: 'sun' });
+    items.push({ label: 'Light-coloured, loose clothing', reason: 'Reflects heat and lets air through.', icon: 'wind' });
+    items.push({ label: 'Water bottle', reason: 'Stay hydrated in the heat.', icon: 'drop' });
   }
 
   if (icy) {
-    items.push({ label: 'Waterproof boots with grip', reason: 'Snow or freezing rain is in the forecast.' });
+    items.push({ label: 'Waterproof boots with grip', reason: 'Snow or freezing rain is in the forecast.', icon: 'boots' });
   } else if (maxRain >= 40) {
-    items.push({ label: 'Umbrella or rain jacket', reason: `Up to ${maxRain}% chance of rain.` });
+    items.push({ label: 'Umbrella or rain jacket', reason: `Up to ${maxRain}% chance of rain.`, icon: 'umbrella' });
   }
   if (maxWind >= 30) {
-    items.push({ label: 'Windbreaker', reason: `Gusty: winds up to ${toWind(maxWind, units)} ${windUnit(units)}.` });
+    items.push({ label: 'Windbreaker', reason: `Gusty: winds up to ${toWind(maxWind, units)} ${windUnit(units)}.`, icon: 'wind' });
   }
   if (maxUv >= 6) {
-    items.push({ label: 'Sunglasses and sunscreen', reason: `UV index reaches ${Math.round(maxUv)}.` });
+    items.push({ label: 'Sunglasses and sunscreen', reason: `UV index reaches ${Math.round(maxUv)}.`, icon: 'sun' });
   }
   const swing = Math.round(maxFeel - minFeel);
   if (swing >= 10) {
     const swingShown = units === 'metric' ? swing : Math.round(swing * 1.8);
-    items.push({ label: 'Bring a removable layer', reason: `Temperature swings about ${swingShown}° during the day.` });
+    items.push({ label: 'Bring a removable layer', reason: `Temperature swings about ${swingShown}° during the day.`, icon: 'swap' });
   }
 
   return { summary, items };
