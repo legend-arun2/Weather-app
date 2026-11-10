@@ -15,7 +15,7 @@ describe('skyFor', () => {
     [0, true, 'clear-day'], [0, false, 'clear-night'], [1, true, 'clear-day'],
     [2, true, 'overcast-day'], [3, false, 'overcast-night'],
     [45, true, 'fog'], [48, false, 'fog'],
-    [61, true, 'rain-day'], [63, false, 'rain-night'], [67, true, 'rain-day'], [81, false, 'rain-night'], [95, true, 'rain-day'],
+    [61, true, 'rain-day'], [63, false, 'rain-night'], [67, true, 'rain-day'], [81, false, 'rain-night'], [95, true, 'storm'], [99, false, 'storm'],
     [71, true, 'snow'], [86, false, 'snow'],
   ] as const)('code %i, day=%s -> %s', (code, day, sky) => {
     expect(skyFor(code, day)).toBe(sky);
@@ -71,6 +71,10 @@ describe('stage text', () => {
     expect(rainNote(series(6, (i) => ({ rainChance: i === 2 ? 20 : 0 })))).toBe('Small chance of rain, up to 20%.');
     expect(rainNote(series(24, (i) => ({ rainChance: i >= 18 ? 70 : 0 })))).toBe('Rain likely from 18:00.');
   });
+  it('says snow when the forecast is snow', () => {
+    expect(rainNote(series(24, (i) => ({ rainChance: i >= 12 ? 70 : 0, code: 73 })))).toBe('Snow likely from 12:00.');
+    expect(rainNote(series(6, (i) => ({ rainChance: i === 2 ? 20 : 0, code: 71 })))).toBe('Small chance of snow, up to 20%.');
+  });
   it('formats coordinates and the observation time', () => {
     expect(formatCoords(48.8566, 2.3522)).toBe('48.86°N 2.35°E');
     expect(formatCoords(-33.87, -70.65)).toBe('33.87°S 70.65°W');
@@ -88,5 +92,39 @@ describe('stage text', () => {
     };
     expect(mapForecast(place, raw).tzAbbr).toBe('CET');
     expect(mapForecast(place, { ...raw, timezone_abbreviation: undefined }).tzAbbr).toBeUndefined();
+  });
+});
+
+import { dayLength, dayProgress } from '../lib/sun';
+
+describe('sun and scrubber data', () => {
+  it('places the sun along the day', () => {
+    expect(dayProgress('2026-11-09T12:00', '2026-11-09T08:00', '2026-11-09T16:00')).toBe(0.5);
+    expect(dayProgress('2026-11-09T08:00', '2026-11-09T08:00', '2026-11-09T16:00')).toBe(0);
+    expect(dayProgress('2026-11-09T06:00', '2026-11-09T08:00', '2026-11-09T16:00')).toBeNull();
+    expect(dayProgress('2026-11-09T22:00', '2026-11-09T08:00', '2026-11-09T16:00')).toBeNull();
+    expect(dayProgress('2026-11-09T12:00', '2026-11-09T16:00', '2026-11-09T08:00')).toBeNull();
+  });
+  it('formats day length', () => {
+    expect(dayLength('2026-11-09T07:42', '2026-11-09T17:15')).toBe('9h 33m');
+  });
+  it('reads sunrise and sunset from the API and tolerates their absence', () => {
+    const place: Place = { name: 'Paris', latitude: 48.85, longitude: 2.35 };
+    const t = Array.from({ length: 24 }, (_, i) => `2026-11-09T${String(i).padStart(2, '0')}:00`);
+    const f = (v: number) => t.map(() => v);
+    const raw = {
+      current: { time: '2026-11-09T14:15', temperature_2m: 10, apparent_temperature: 8, relative_humidity_2m: 50, wind_speed_10m: 12, weather_code: 3, is_day: 1 },
+      hourly: { time: t, temperature_2m: f(10), apparent_temperature: f(8), precipitation_probability: f(0), wind_speed_10m: f(12), uv_index: f(1), weather_code: f(3) },
+    };
+    expect(mapForecast(place, raw).sun).toBeUndefined();
+    const withSun = mapForecast(place, { ...raw, daily: { sunrise: ['2026-11-09T07:42', '2026-11-10T07:44'], sunset: ['2026-11-09T17:15', '2026-11-10T17:14'] } });
+    expect(withSun.sun).toEqual([{ sunrise: '2026-11-09T07:42', sunset: '2026-11-09T17:15' }, { sunrise: '2026-11-10T07:44', sunset: '2026-11-10T17:14' }]);
+    expect(mapForecast(place, { ...raw, daily: { sunrise: [null], sunset: ['x'] } }).sun).toBeUndefined();
+  });
+  it('exposes one scrubber point per plotted hour, inside the box', () => {
+    const m = buildChart(series(24, (i) => ({ rainChance: i })), 'metric', true)!;
+    expect(m.points).toHaveLength(12);
+    expect(m.points[0]).toMatchObject({ time: '00:00', rain: 0 });
+    expect(m.points.every((p) => p.left >= 0 && p.left <= 100 && p.top >= 0 && p.top <= 100)).toBe(true);
   });
 });

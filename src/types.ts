@@ -34,6 +34,12 @@ export interface Forecast {
   hours: HourPoint[]; // next 24 hours
   allHours: HourPoint[]; // full multi-day hourly series
   tzAbbr?: string; // e.g. CET, from the API
+  sun?: SunTimes[]; // per day, today first
+}
+
+export interface SunTimes {
+  sunrise: string; // local ISO
+  sunset: string;
 }
 
 export type IntentKind = 'weather' | 'hourly' | 'outfit' | 'help';

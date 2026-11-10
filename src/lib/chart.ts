@@ -29,6 +29,8 @@ export interface ChartModel {
   now: { x: number; y: number } | null;
   labels: ChartLabel[];
   hourLabels: { text: string; left: number }[];
+  /** One entry per plotted hour, for the hover/keyboard scrubber. left/top in % of the chart box. */
+  points: { left: number; top: number; time: string; temp: number; rain: number; code: number }[];
 }
 
 const f = (n: number) => n.toFixed(1);
@@ -87,5 +89,9 @@ export function buildChart(hours: HourPoint[], units: Units, showNow: boolean): 
     .filter((h) => n <= 6 || h.i % 2 === 0)
     .map(({ text, left }) => ({ text, left }));
 
-  return { line, area, rain, now: showNow ? { x: pts[0][0], y: pts[0][1] } : null, labels, hourLabels };
+  const points = cols.map((h, i) => ({
+    left: pct(pts[i][0], W), top: pct(pts[i][1], H), time: h.time.slice(11, 16), temp: temps[i], rain: h.rainChance, code: h.code,
+  }));
+
+  return { line, area, rain, now: showNow ? { x: pts[0][0], y: pts[0][1] } : null, labels, hourLabels, points };
 }

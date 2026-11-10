@@ -1,4 +1,8 @@
 /* The sky is the interface: one palette per condition, applied through [data-sky]. */
+@property --top { syntax: '<color>'; inherits: true; initial-value: #0f3a7d; }
+@property --mid { syntax: '<color>'; inherits: true; initial-value: #1c58ab; }
+@property --bottom { syntax: '<color>'; inherits: true; initial-value: #2a6fc4; }
+
 :root {
   --display: 'Big Shoulders Display', 'Arial Narrow', sans-serif;
   --body: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -10,7 +14,7 @@
 .sky { /* default: clear day */
   --top: #0f3a7d; --mid: #1c58ab; --bottom: #2a6fc4; --accent: #ffe08a; --ink: #0b1d3a; --rain: #bfe3ff;
   --panel: rgba(6, 20, 48, 0.6); --glow: rgba(255, 226, 140, 0.4); --glow-on: 1; --disc-a: #fff3c4; --disc-b: #ffd35c;
-  --disc-on: 0.95; --cloud: rgba(255, 255, 255, 0.14); --streak: rgba(190, 215, 255, 0.1); --streak-on: 0;
+  --disc-on: 0.95; --cloud: rgba(255, 255, 255, 0.14); --streak: rgba(190, 215, 255, 0.16);
 }
 .sky[data-sky='clear-night'] {
   --top: #070c1a; --mid: #101a36; --bottom: #1d2c52; --accent: #cfe0ff; --ink: #0b1226; --rain: #5fb0ff;
@@ -27,12 +31,16 @@
 }
 .sky[data-sky='rain-day'] {
   --top: #1b2536; --mid: #2f3f57; --bottom: #435670; --accent: #bfe3ff; --ink: #0b1d3a; --rain: #7cc0ff;
-  --panel: rgba(6, 12, 24, 0.56); --glow-on: 0; --disc-on: 0; --cloud: rgba(255, 255, 255, 0.12); --streak-on: 1;
+  --panel: rgba(6, 12, 24, 0.56); --glow-on: 0; --disc-on: 0; --cloud: rgba(255, 255, 255, 0.12);
 }
 .sky[data-sky='rain-night'] {
   --top: #070c1a; --mid: #101a36; --bottom: #1d2c52; --accent: #cfe0ff; --ink: #0b1226; --rain: #5fb0ff;
   --panel: rgba(5, 9, 20, 0.56); --glow: rgba(190, 210, 255, 0.3); --disc-a: #f2f6ff; --disc-b: #b9c9ee; --disc-on: 0.92;
-  --cloud: rgba(120, 140, 190, 0.26); --streak-on: 1;
+  --cloud: rgba(120, 140, 190, 0.26);
+}
+.sky[data-sky='storm'] {
+  --top: #0d0f1c; --mid: #1f2238; --bottom: #343752; --accent: #ffe9a8; --ink: #15172a; --rain: #8fb4ff;
+  --panel: rgba(6, 7, 18, 0.58); --glow-on: 0; --disc-on: 0; --cloud: rgba(170, 170, 210, 0.2);
 }
 .sky[data-sky='snow'] {
   --top: #26354a; --mid: #3f5570; --bottom: #4f6580; --accent: #e6f0ff; --ink: #14202b; --rain: #cfe0ff;
@@ -50,56 +58,109 @@ button { font: inherit; }
 .sky {
   position: relative; overflow: hidden; min-height: 100dvh; color: #fff; font-family: var(--body);
   background: linear-gradient(180deg, var(--top) 0%, var(--mid) 50%, var(--bottom) 100%);
+  transition: --top 1.4s ease, --mid 1.4s ease, --bottom 1.4s ease; /* the sky changes like weather, not like a page */
 }
 
-/* atmosphere */
+/* ---- atmosphere ---- */
 .sky-layers { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .sky-glow { position: absolute; right: 16%; top: -8%; width: 460px; height: 460px; opacity: var(--glow-on);
-  background: radial-gradient(closest-side, var(--glow), transparent 70%); }
+  background: radial-gradient(closest-side, var(--glow), transparent 70%); transition: opacity 1.4s ease; }
 .sky-disc { position: absolute; right: 25%; top: 2%; width: 100px; height: 100px; border-radius: 50%; opacity: var(--disc-on);
-  background: radial-gradient(circle at 38% 38%, var(--disc-a), var(--disc-b)); }
+  background: radial-gradient(circle at 38% 38%, var(--disc-a), var(--disc-b)); transition: opacity 1.4s ease; }
 .sky-cloud { position: absolute; background: radial-gradient(closest-side, var(--cloud), transparent 72%); filter: blur(24px); }
-.sky-cloud.c1 { left: -8%; top: 8%; width: 860px; height: 300px; }
-.sky-cloud.c2 { right: -6%; top: 28%; width: 780px; height: 280px; }
-.sky-cloud.c3 { left: 10%; bottom: -6%; width: 900px; height: 320px; }
-.sky-streaks { position: absolute; inset: 0; opacity: var(--streak-on); }
-.sky-streaks.s1 { background: repeating-linear-gradient(105deg, transparent 0 26px, var(--streak) 26px 27px); }
-.sky-streaks.s2 { background: repeating-linear-gradient(105deg, transparent 0 61px, var(--streak) 61px 62px); }
+.sky-cloud.c1 { left: -8%; top: 8%; width: 860px; height: 300px; animation: drift 70s ease-in-out infinite alternate; }
+.sky-cloud.c2 { right: -6%; top: 28%; width: 780px; height: 280px; animation: drift 90s ease-in-out infinite alternate-reverse; }
+.sky-cloud.c3 { left: 10%; bottom: -6%; width: 900px; height: 320px; animation: drift 110s ease-in-out infinite alternate; }
+.sky-stars, .sky-streaks, .sky-snow, .sky-flash { position: absolute; inset: 0; opacity: 0; transition: opacity 1.4s ease; }
+.sky-stars {
+  background-image:
+    radial-gradient(1.2px 1.2px at 20px 30px, #fff, transparent), radial-gradient(1px 1px at 120px 80px, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1.4px 1.4px at 200px 150px, #fff, transparent), radial-gradient(1px 1px at 260px 40px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1px 1px at 70px 210px, rgba(255, 255, 255, 0.8), transparent), radial-gradient(1.2px 1.2px at 170px 260px, #fff, transparent);
+  background-size: 300px 300px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 80%); mask-image: linear-gradient(180deg, #000 0%, transparent 80%);
+}
+.sky[data-sky='clear-night'] .sky-stars { opacity: 0.9; animation: twinkle 5s ease-in-out infinite alternate; }
+/* Rain: fixed diagonal lines, cut into dashes by a mask that slides along them. */
+.sky-streaks { inset: -160px; }
+.sky-streaks.s1 { background: repeating-linear-gradient(105deg, transparent 0 26px, var(--streak) 26px 27px);
+  -webkit-mask-image: repeating-linear-gradient(195deg, #000 0 56px, transparent 56px 140px); mask-image: repeating-linear-gradient(195deg, #000 0 56px, transparent 56px 140px); }
+.sky-streaks.s2 { background: repeating-linear-gradient(105deg, transparent 0 61px, var(--streak) 61px 62.5px);
+  -webkit-mask-image: repeating-linear-gradient(195deg, #000 0 80px, transparent 80px 140px); mask-image: repeating-linear-gradient(195deg, #000 0 80px, transparent 80px 140px); }
+.sky[data-sky^='rain'] .sky-streaks, .sky[data-sky='storm'] .sky-streaks { opacity: 1; }
+.sky[data-sky^='rain'] .s1, .sky[data-sky='storm'] .s1 { animation: fall 0.75s linear infinite; }
+.sky[data-sky^='rain'] .s2, .sky[data-sky='storm'] .s2 { animation: fall 1.15s linear infinite; }
+.sky-snow.n1 { background-image: radial-gradient(2px 2px at 30px 40px, #fff, transparent), radial-gradient(3px 3px at 150px 120px, rgba(255, 255, 255, 0.9), transparent),
+  radial-gradient(2px 2px at 90px 200px, #fff, transparent), radial-gradient(2.5px 2.5px at 220px 60px, rgba(255, 255, 255, 0.8), transparent); background-size: 260px 260px; }
+.sky-snow.n2 { background-image: radial-gradient(4px 4px at 60px 90px, rgba(255, 255, 255, 0.85), transparent), radial-gradient(3px 3px at 250px 220px, rgba(255, 255, 255, 0.7), transparent),
+  radial-gradient(4.5px 4.5px at 330px 40px, rgba(255, 255, 255, 0.8), transparent); background-size: 380px 380px; }
+.sky[data-sky='snow'] .sky-snow { opacity: 1; }
+.sky[data-sky='snow'] .n1 { animation: snow-a 14s linear infinite; }
+.sky[data-sky='snow'] .n2 { animation: snow-b 9s linear infinite; }
+.sky-flash { background: radial-gradient(ellipse at 70% 0%, rgba(225, 232, 255, 0.9), transparent 62%); }
+.sky[data-sky='storm'] .sky-flash { animation: flash 11s linear infinite; }
 .sky-grain { position: absolute; inset: 0; opacity: 0.12; mix-blend-mode: overlay; }
 
+@keyframes drift { from { transform: translateX(-30px); } to { transform: translateX(50px); } }
+@keyframes twinkle { from { opacity: 0.9; } to { opacity: 0.45; } }
+@keyframes fall { to { transform: translate(-36.2px, 135.2px); } } /* one mask period (140px) along the streaks */
+@keyframes snow-a { to { background-position: 0 260px; } }
+@keyframes snow-b { to { background-position: 0 380px; } }
+@keyframes flash { 0%, 90%, 100% { opacity: 0; } 91% { opacity: 0.2; } 92% { opacity: 0.03; } 93.5% { opacity: 0.14; } 96% { opacity: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+
+/* ---- frame ---- */
 .shell { position: relative; max-width: 1180px; margin: 0 auto; padding: 28px 32px 28px; min-height: 100dvh; display: flex; flex-direction: column; gap: 28px; }
 header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .brand { display: flex; align-items: center; gap: 12px; }
 .logo { color: var(--accent); display: grid; }
 h1 { margin: 0; font: 800 26px var(--display); letter-spacing: 0.08em; text-transform: uppercase; }
 .unit-toggle { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; }
-.unit-btn { min-width: 52px; height: 44px; border: 0; border-radius: 999px; background: transparent; color: #fff; font: 500 14px var(--mono); cursor: pointer; }
+.unit-btn { min-width: 52px; height: 44px; border: 0; border-radius: 999px; background: transparent; color: #fff; font: 500 14px var(--mono); cursor: pointer; transition: background 0.2s, color 0.2s; }
 .unit-btn[aria-pressed='true'] { background: var(--accent); color: var(--ink); }
+.unit-btn[aria-pressed='false']:hover { background: rgba(255, 255, 255, 0.14); }
 
 .layout { flex: 1; display: flex; flex-wrap: wrap; gap: 32px; align-items: stretch; }
 
-/* stage: the current weather, big */
+/* ---- stage: the current weather, big ---- */
 .stage { flex: 1 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+.stage > * { animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.stage > :nth-child(2) { animation-delay: 0.06s; }
+.stage > :nth-child(3) { animation-delay: 0.14s; }
+.stage > :nth-child(4) { animation-delay: 0.22s; }
 .caption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; font: 500 12px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .hero { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 36px; }
-.big-temp { font: 800 232px/0.8 var(--display); letter-spacing: -0.02em; }
+.big-temp { font: 800 232px/0.8 var(--display); letter-spacing: -0.02em; text-shadow: 0 10px 50px rgba(0, 0, 0, 0.22); }
 .hero-text { padding-bottom: 8px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .condition { font: 700 52px/1 var(--display); letter-spacing: 0.03em; text-transform: uppercase; }
 .note { font-size: 18px; line-height: 1.4; max-width: 320px; }
-.stats { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
-.stat { border-top: 1px solid var(--hair); padding-top: 12px; }
+.range { font: 500 12px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.stats { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 24px; }
+.stat { border-top: 1px solid var(--hair); padding-top: 12px; min-width: 0; }
 .stat dt { font: 500 12px var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
 .stat dd { margin: 4px 0 0; font-weight: 600; font-size: 24px; }
+.daylight dd { display: flex; flex-direction: column; gap: 4px; font: 500 12px var(--mono); }
+.daylight svg { width: 100%; max-width: 110px; overflow: visible; }
+.sun-text { display: flex; flex-wrap: wrap; gap: 0 10px; }
+.sun-length { color: var(--muted); }
+.sun-path { stroke: #fff; stroke-opacity: 0.55; stroke-width: 2; stroke-dasharray: 3 6; }
+.sun-horizon { stroke: #fff; stroke-opacity: 0.4; stroke-width: 1.5; }
+.sun-dot { fill: var(--accent); }
+.sun-times, .sun-length { white-space: nowrap; }
 .stage-empty { justify-content: center; }
 .empty-title { font: 800 96px/0.9 var(--display); letter-spacing: -0.01em; text-transform: uppercase; max-width: 560px; }
 .empty-text { margin: 0; font-size: 18px; max-width: 440px; }
 
-/* hourly chart */
+/* ---- hourly chart ---- */
 .chart-panel { background: var(--panel); border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 8px; padding: 18px 20px 14px; backdrop-filter: blur(14px); }
 .chart-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 6px; }
 .chart-title { margin: 0; font: 700 22px var(--display); letter-spacing: 0.06em; text-transform: uppercase; }
 .chart-key { font: 500 12px var(--mono); letter-spacing: 0.08em; color: var(--muted); }
-.chart-box { position: relative; width: 100%; aspect-ratio: 600 / 262; }
+.chart-box { position: relative; width: 100%; aspect-ratio: 600 / 262; touch-action: pan-y; cursor: crosshair; border-radius: 4px; }
+.chart-box:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 .chart-box svg { position: absolute; inset: 0; }
 .grid-line { stroke: #fff; stroke-opacity: 0.12; }
 .axis-line { stroke: #fff; stroke-opacity: 0.22; }
@@ -108,50 +169,77 @@ h1 { margin: 0; font: 800 26px var(--display); letter-spacing: 0.08em; text-tran
 .temp-line { stroke: var(--accent); }
 .now-dot { fill: var(--accent); stroke: var(--mid); }
 .rain-bars { fill: var(--rain); }
-.chart-label { position: absolute; transform: translate(-50%, -100%); font: 500 13px var(--mono); white-space: nowrap; }
+.chart-label { position: absolute; transform: translate(-50%, -100%); font: 500 13px var(--mono); white-space: nowrap; transition: opacity 0.15s; }
+.scrubbing .chart-label { opacity: 0; }
 .hour-tick { position: absolute; top: 94.5%; transform: translateX(-50%); font: 500 11px var(--mono); color: var(--muted); }
-.rain-caption { position: absolute; left: 4%; top: 68%; font: 500 11px var(--mono); letter-spacing: 0.08em; color: var(--muted); }
+.scrub-line { position: absolute; top: 13%; bottom: 14.5%; width: 1px; background: rgba(255, 255, 255, 0.6); pointer-events: none; }
+.scrub-dot { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); pointer-events: none; }
+.scrub-tip { position: absolute; top: -2%; transform: translateX(-50%); display: flex; gap: 10px; align-items: baseline; white-space: nowrap; pointer-events: none;
+  padding: 5px 10px; border-radius: 6px; background: var(--accent); color: var(--ink); font: 500 12px var(--mono); }
+.scrub-tip strong { font-weight: 500; opacity: 0.75; }
 
-/* conversation */
+/* ---- conversation ---- */
 .chat { flex: 1 1 360px; max-width: 440px; min-width: 0; min-height: 560px; position: relative; background: var(--panel);
   border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 8px; backdrop-filter: blur(14px); }
 .chat-inner { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 16px; padding: 20px; }
-.messages { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; justify-content: flex-end; }
-.msg { display: flex; flex-direction: column; gap: 8px; }
+.messages { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.3) transparent; }
+.messages > :first-child { margin-top: auto; } /* bottom-align short chats without breaking scroll */
+.msg { display: flex; flex-direction: column; gap: 8px; animation: rise 0.35s ease both; }
 .msg.user { align-items: flex-end; }
 .bot-label { font: 500 11px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
 .bubble { font-size: 18px; line-height: 1.4; }
 .msg.user .bubble { max-width: 86%; padding: 10px 16px; font-size: 16px; background: rgba(255, 255, 255, 0.16); border-radius: 16px 16px 2px 16px; }
-.typing { color: var(--muted); font-style: italic; }
+.typing { color: var(--muted); }
+.dots { display: inline-flex; gap: 4px; margin-left: 6px; }
+.dots i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: blink 1.2s infinite; }
+.dots i:nth-child(2) { animation-delay: 0.2s; }
+.dots i:nth-child(3) { animation-delay: 0.4s; }
 .outfit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .outfit-list li { display: flex; gap: 14px; padding: 12px 0; border-top: 1px solid rgba(255, 255, 255, 0.22); }
 .outfit-list li:last-child { border-bottom: 1px solid rgba(255, 255, 255, 0.22); }
 .outfit-icon { color: var(--accent); display: grid; align-content: start; }
 .outfit-title { font-weight: 600; font-size: 16px; }
 .outfit-reason { font-size: 14px; color: var(--muted); margin-top: 2px; }
+.dock { display: flex; flex-direction: column; gap: 14px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chips button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px solid var(--line);
-  background: transparent; color: #fff; border-radius: 999px; font-size: 14px; font-weight: 500; cursor: pointer; }
-.composer { display: flex; gap: 8px; border: 1px solid var(--line); border-radius: 12px; padding: 6px; }
+  background: transparent; color: #fff; border-radius: 999px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+.chips button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); border-color: #fff; }
+.composer { display: flex; gap: 8px; border: 1px solid var(--line); border-radius: 12px; padding: 6px; background: rgba(0, 0, 0, 0.14); }
 .composer input { flex: 1; min-width: 0; height: 46px; border: 0; background: transparent; color: #fff; font: 400 16px var(--body); padding: 0 10px; outline: none; }
 .composer input::placeholder { color: rgba(255, 255, 255, 0.7); }
 .composer:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
-.send { width: 46px; height: 46px; border: 0; border-radius: 8px; background: var(--accent); color: var(--ink); display: grid; place-items: center; cursor: pointer; }
+.send { width: 46px; height: 46px; border: 0; border-radius: 8px; background: var(--accent); color: var(--ink); display: grid; place-items: center; cursor: pointer; transition: transform 0.15s; }
+.send:hover:not(:disabled) { transform: translateY(-2px); }
 .chips button:disabled, .send:disabled { opacity: 0.5; cursor: default; }
 button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 24px; font: 400 12px var(--mono); color: rgba(255, 255, 255, 0.92); }
 footer a { color: inherit; }
 
+@media (prefers-reduced-motion: no-preference) {
+  .temp-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1.1s 0.25s ease-out forwards; }
+  .temp-area, .rain-bars, .now-dot, .chart-label { animation: fade 0.6s 0.9s backwards; } /* backwards: must not pin opacity afterwards */
+}
+
+/* Stacked: the conversation becomes part of the page and the message box docks to the bottom of the screen. */
 @media (max-width: 900px) {
+  .shell { padding-bottom: 168px; }
   .layout { flex-direction: column; }
   .stage { flex-basis: auto; }
-  .chat { flex-basis: auto; max-width: none; min-height: 520px; }
+  .chat { flex: none; max-width: none; min-height: 0; backdrop-filter: none; } /* a filter here would trap the fixed dock */
+  .chat-inner { position: static; }
+  .messages { overflow: visible; }
+  .msg { scroll-margin-bottom: 180px; }
+  .dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; gap: 10px; padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--top) 94%, transparent); backdrop-filter: blur(18px); border-top: 1px solid rgba(255, 255, 255, 0.18); }
+  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .chips button { white-space: nowrap; flex: none; }
 }
 @media (max-width: 560px) {
   .sky-glow { right: -50px; top: -20px; width: 300px; height: 300px; }
   .sky-disc { right: 16px; top: 70px; width: 68px; height: 68px; }
-  .shell { padding: 14px 16px 16px; gap: 14px; }
+  .shell { padding: 14px 16px 164px; gap: 14px; }
   h1 { font-size: 22px; }
   .layout { gap: 14px; }
   .stage { gap: 12px; }
@@ -160,17 +248,20 @@ footer a { color: inherit; }
   .condition { font-size: 36px; }
   .note { font-size: 15px; }
   .hero-text { padding-bottom: 4px; }
-  .stats { gap: 14px; }
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .daylight { grid-column: 1 / -1; }
   .stat dd { font-size: 18px; }
+  .daylight dd { flex-direction: row; align-items: flex-end; gap: 12px; font-size: 12px; }
+  .daylight svg { width: 84px; flex: none; }
   .stat dt { font-size: 11px; }
   .empty-title { font-size: 64px; }
   .chart-panel { padding: 12px 14px 8px; }
   .chart-title { font-size: 19px; }
   .chart-key { font-size: 11px; }
-  .chat { min-height: 480px; }
+  .scrub-tip { gap: 7px; font-size: 11px; }
   .chat-inner { padding: 14px; gap: 10px; }
   .bubble { font-size: 16px; }
-  .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
-  .chips button { white-space: nowrap; }
 }
-@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
