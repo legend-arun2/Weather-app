@@ -51,3 +51,11 @@ There is no linter. Tests run in the `node` environment, so there are no compone
 ## CI and deploy
 
 `.github/workflows/deploy.yml` runs on pull requests (install, test, build, production audit; no deploy) and on pushes to `main` (same, then deploy `dist/` to GitHub Pages at `/Weather-app/`).
+
+**Deploy job failing within ~3 seconds with no steps and no log** (the `build` job is green) is not a code problem. The reason appears on the job's page: "Branch `main` is not allowed to deploy to github-pages due to environment protection rules". Fix it in GitHub settings, not in the repo: Settings → Environments → `github-pages` → Deployment branches and tags must allow `main` (No restriction, or a rule for `main`; "Protected branches only" does not work). Also keep the repo's default branch set to `main`. After fixing, re-run only the failed jobs; no new commit is needed. The job log returns HTTP 404 through the API, so ask the user for the message on the job page.
+
+## Working in this repo
+
+- Changes go to `main` through pull requests that the user merges (merge commits). Work happens on `claude/focused-gates-ldlier`; once its PR is merged, restart it from the latest main (`git fetch origin main && git checkout -B claude/focused-gates-ldlier origin/main`) before new work. Do not force-push.
+- The user sometimes merges `main` into the branch on GitHub, so `git fetch` before pushing; if the push is rejected, merge `origin/claude/focused-gates-ldlier` into the local branch rather than rewriting history.
+- Open-Meteo and `github.io` are not reachable from the Claude Code cloud sandbox. Verify UI changes by serving `npm run preview` and driving it with Playwright while routing `**/geocoding-api.open-meteo.com/**` and `**/api.open-meteo.com/**` to canned JSON (include `daily.sunrise`/`sunset` and `timezone_abbreviation`). Do this on the production build so the CSP is exercised, and watch for CSP console errors. Real-data behaviour can only be confirmed on the deployed site, so say so in PR descriptions.
