@@ -24,10 +24,14 @@ const SUGGESTIONS = ["What's the weather in London?", 'What should I wear today 
 
 export default function ChatPanel({ messages, units, busy, onSend, onLocate }: Props) {
   const [text, setText] = useState('');
-  const endRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
+    // Scroll only the message list; scrollIntoView would also scroll the page and hide the weather above.
+    const el = listRef.current;
+    if (!el) return;
+    const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollTo?.({ top: el.scrollHeight, behavior: reduce ? 'auto' : 'smooth' });
   }, [messages.length, busy]);
 
   const submit = (e: React.FormEvent) => {
@@ -40,15 +44,16 @@ export default function ChatPanel({ messages, units, busy, onSend, onLocate }: P
 
   return (
     <div className="chat">
-      <div className="messages" aria-live="polite">
+     <div className="chat-inner">
+      <div className="messages" aria-live="polite" ref={listRef}>
         {messages.map((m) => (
           <div key={m.id} className={`msg ${m.role}`}>
+            {m.role === 'bot' && <div className="bot-label">Weather Chat</div>}
             <div className="bubble">{typeof m.text === 'function' ? m.text(units) : m.text}</div>
             {m.body?.(units)}
           </div>
         ))}
-        {busy && <div className="msg bot"><div className="bubble typing">Checking the sky…</div></div>}
-        <div ref={endRef} />
+        {busy && <div className="msg bot"><div className="bot-label">Weather Chat</div><div className="bubble typing">Checking the sky…</div></div>}
       </div>
       <div className="chips">
         {SUGGESTIONS.map((s) => (
@@ -61,6 +66,7 @@ export default function ChatPanel({ messages, units, busy, onSend, onLocate }: P
           aria-label="Message" maxLength={MAX_INPUT} />
         <button type="submit" className="send" aria-label="Send" disabled={busy || !text.trim()}><Icon name="send" size={22} strokeWidth={2.2} /></button>
       </form>
+     </div>
     </div>
   );
 }

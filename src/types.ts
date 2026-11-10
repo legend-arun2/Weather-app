@@ -33,6 +33,7 @@ export interface Forecast {
   current: Current;
   hours: HourPoint[]; // next 24 hours
   allHours: HourPoint[]; // full multi-day hourly series
+  tzAbbr?: string; // e.g. CET, from the API
 }
 
 export type IntentKind = 'weather' | 'hourly' | 'outfit' | 'help';
