@@ -1,4 +1,4 @@
-import type { Current, Forecast, HourPoint, Place } from '../types';
+import type { Current, Forecast, HourPoint, Place, SunTimes } from '../types';
 
 const GEO = 'https://geocoding-api.open-meteo.com/v1/search';
 const FORECAST = 'https://api.open-meteo.com/v1/forecast';
@@ -46,6 +46,7 @@ export async function fetchForecast(place: Place): Promise<Forecast> {
     longitude: round2(place.longitude),
     current: 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,is_day',
     hourly: 'temperature_2m,apparent_temperature,precipitation_probability,wind_speed_10m,uv_index,weather_code',
+    daily: 'sunrise,sunset',
     forecast_days: '3',
     timezone: 'auto',
   });
@@ -54,6 +55,18 @@ export async function fetchForecast(place: Place): Promise<Forecast> {
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const orZero = (v: unknown) => (finite(v) ? v : 0);
+
+const ISO_MINUTE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+function mapSun(daily: any): SunTimes[] | undefined {
+  if (!Array.isArray(daily?.sunrise) || !Array.isArray(daily?.sunset)) return undefined;
+  const out: SunTimes[] = [];
+  for (let i = 0; i < daily.sunrise.length; i++) {
+    const sunrise = daily.sunrise[i], sunset = daily.sunset[i];
+    if (typeof sunrise !== 'string' || typeof sunset !== 'string' || !ISO_MINUTE.test(sunrise) || !ISO_MINUTE.test(sunset)) break;
+    out.push({ sunrise, sunset });
+  }
+  return out.length ? out : undefined;
+}
 
 // Exported for tests: validates the raw Open-Meteo payload and converts it to our shape.
 export function mapForecast(place: Place, d: any): Forecast {
@@ -96,6 +109,7 @@ export function mapForecast(place: Place, d: any): Forecast {
     hours: all.slice(start, start + 24),
     allHours: all,
     tzAbbr: typeof d.timezone_abbreviation === 'string' ? d.timezone_abbreviation : undefined,
+    sun: mapSun(d.daily),
   };
 }
 

@@ -1,11 +1,16 @@
 import type { HourPoint } from '../types';
 
+const SNOW_CODES = new Set([71, 73, 75, 77, 85, 86]);
+
+/** One line on precipitation for the hours shown; says snow when the forecast code is snow. */
 export function rainNote(hours: HourPoint[]): string {
   if (hours.length === 0) return '';
   const first = hours.find((h) => h.rainChance >= 40);
-  if (first) return `Rain likely from ${first.time.slice(11, 16)}.`;
+  if (first) return `${SNOW_CODES.has(first.code) ? 'Snow' : 'Rain'} likely from ${first.time.slice(11, 16)}.`;
   const max = Math.max(...hours.map((h) => h.rainChance));
-  return max >= 10 ? `Small chance of rain, up to ${max}%.` : 'No rain expected.';
+  if (max < 10) return 'No rain expected.';
+  const snowy = hours.some((h) => h.rainChance >= 10 && SNOW_CODES.has(h.code));
+  return `Small chance of ${snowy ? 'snow' : 'rain'}, up to ${max}%.`;
 }
 
 export function formatCoords(lat: number, lon: number): string {

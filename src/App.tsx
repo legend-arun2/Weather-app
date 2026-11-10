@@ -20,6 +20,9 @@ const HELP_TEXT =
   'Ask me things like "weather in Paris", "next 24 hours in Tokyo" or "what should I wear today in Oslo?". ' +
   'You can also tap "Use my location".';
 
+const STARTERS = ["What's the weather in London?", 'What should I wear today in Oslo?', 'Next 24 hours in Tokyo'];
+const FOLLOW_UPS = ['Weather tomorrow', 'What should I wear?', 'Next 24 hours'];
+
 function loadUnits(): Units {
   try {
     return localStorage.getItem('units') === 'imperial' ? 'imperial' : 'metric';
@@ -45,6 +48,10 @@ export default function App() {
     const s = summarize(stage.hours);
     return stage.tomorrow && s ? skyFor(s.code, true) : skyFor(stage.forecast.current.code, stage.forecast.current.isDay);
   }, [stage, startHour]);
+
+  // Once a place is known, the chips become follow-ups about it.
+  const suggestions = stage ? FOLLOW_UPS : STARTERS;
+  const stageKey = stage ? `${stage.forecast.place.name}|${stage.forecast.current.time}|${stage.tomorrow}|${stage.hours.length}` : 'empty';
 
   const push = useCallback((m: Omit<ChatMessage, 'id'>) => {
     setMessages((prev) => [...prev, { ...m, id: nextId.current++ }]);
@@ -86,11 +93,6 @@ export default function App() {
     const chartTitle = tomorrow ? 'Tomorrow' : `Next ${hours.length} hours`;
     const name = place.name;
     setStage({ forecast, hours, tomorrow, chartTitle });
-    // When the layout is stacked (phones), bring the new weather back into view; outfit advice is in the chat below it.
-    if (kind !== 'outfit' && window.matchMedia('(max-width: 900px)').matches) {
-      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
-    }
 
     if (kind === 'outfit') {
       push({
@@ -99,11 +101,12 @@ export default function App() {
         body: (u) => <OutfitCard advice={recommendOutfit(hours, u)} />,
       });
     } else if (kind === 'hourly') {
-      push({ role: 'bot', text: `Hourly forecast for ${name} (${chartTitle.toLowerCase()}) is on the left.` });
+      push({ role: 'bot', showStage: true, text: `Here is the hourly forecast for ${name} (${chartTitle.toLowerCase()}).` });
     } else {
       const s = summarize(hours)!;
       push({
         role: 'bot',
+        showStage: true,
         text: (u) => {
           const label = describeCode(tomorrow ? s.code : forecast.current.code, forecast.current.isDay).label;
           return tomorrow
@@ -166,8 +169,8 @@ export default function App() {
           </div>
         </header>
         <main className="layout">
-          <Stage data={stage} units={units} />
-          <ChatPanel messages={messages} units={units} busy={busy} onSend={onSend} onLocate={onLocate} />
+          <Stage key={stageKey} data={stage} units={units} />
+          <ChatPanel messages={messages} units={units} busy={busy} suggestions={suggestions} onSend={onSend} onLocate={onLocate} />
         </main>
         <footer>
           <span>Data by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a></span>

@@ -10,8 +10,12 @@ A chat-style weather web app. Ask in plain English:
 You get current conditions, a 24-hour temperature and rain chart, and rule-based clothing advice
 (based on feels-like temperature, rain chance, wind and UV). °C/°F toggle included.
 
-The whole screen is painted as the current sky: clear, overcast, rain, snow or fog, by day or night. The sky follows
+The whole screen is painted as the current sky: clear, overcast, rain, storm, snow or fog, by day or night, with drifting
+cloud, falling rain or snow, stars and lightning (all switched off when the device asks for reduced motion). The sky follows
 the forecast you ask for (and your clock before you ask). Palettes live in `src/styles.css` under `[data-sky]`.
+
+The hourly chart can be scrubbed: hover, drag on touch, or focus it and use the arrow keys to read each hour. A daylight
+arc shows sunrise, sunset and where the sun is now. On phones the message box stays docked at the bottom of the screen.
 
 Weather data comes from [Open-Meteo](https://open-meteo.com/), which needs **no API key**, so nothing secret ships to the browser.
 
